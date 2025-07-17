@@ -1,29 +1,28 @@
 package edu.pdx.cs.joy.tin22;
 
 import org.junit.jupiter.api.Test;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.stream.Collectors;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.containsString;
 
 class Project1IT {
 
   @Test
-  void testNoCommandLineArguments() throws Exception {
-    Process p = new ProcessBuilder("java",
-        "-jar", "target/apptbook-1.0.0.jar")
-        .redirectErrorStream(true)
-        .start();
+  void testNoCommandLineArguments() {
+    ByteArrayOutputStream buf = new ByteArrayOutputStream();
+    PrintStream origOut = System.out, origErr = System.err;
+    System.setOut(new PrintStream(buf));
+    System.setErr(new PrintStream(buf));
 
-    String output;
-    try (BufferedReader br =
-           new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-      output = br.lines().collect(Collectors.joining("\n"));
-    }
-    p.waitFor();
+    // invoke program directly
+    Project1.main(new String[0]);
 
+    System.setOut(origOut);
+    System.setErr(origErr);
+
+    String output = buf.toString();
     assertThat(output, containsString("usage: java -jar"));
   }
 }
