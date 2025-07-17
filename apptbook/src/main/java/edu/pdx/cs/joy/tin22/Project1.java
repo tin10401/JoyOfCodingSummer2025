@@ -3,64 +3,78 @@ package edu.pdx.cs.joy.tin22;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Project1 {
-  private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("M/d/yyyy H:mm");
+  private static final String USAGE =
+    "usage: java -jar target/apptbook-1.0.0.jar [options] <args>\n" +
+    "args are: owner description begin-date begin-time end-date end-time\n" +
+    "options may appear in any order:\n" +
+    "  -print    Prints a description of the new appointment\n" +
+    "  -README   Prints a README and exits";
+  private static final DateTimeFormatter FMT =
+    DateTimeFormatter.ofPattern("M/d/yyyy H:mm");
 
   public static void main(String[] args) {
     if (args.length == 0) {
-      System.err.println("Missing command line arguments");
+      System.err.println(USAGE);
       return;
     }
-    boolean printFlag = false;
-    boolean readmeFlag = false;
-    int idx = 0;
-    while (idx < args.length && args[idx].startsWith("-")) {
-      switch (args[idx++]) {
-        case "-print":  printFlag  = true; break;
-        case "-README": readmeFlag = true; break;
-        default: error("Unknown option: " + args[idx-1]);
+    boolean print = false;
+    List<String> ops = new ArrayList<>();
+    for (String arg : args) {
+      if ("-print".equals(arg)) {
+        print = true;
+        continue;
       }
+      if ("-README".equals(arg)) {
+        System.out.println(
+          "Project 1: Appointment Book Application\n" +
+          "Author: Tin Le\n" +
+          "Creates an appointment book containing one appointment supplied\n" +
+          "on the command line. Dates use mm/dd/yyyy hh:mm format.\n\n" +
+          USAGE);
+        return;
+      }
+      if (arg.startsWith("-")) {
+        error("Unknown option: " + arg);
+        return;
+      }
+      ops.add(arg);
     }
-    if (readmeFlag) {
-      System.out.println(
-        "Project 1: Appointment Book CLI\n" +
-        "Usage: java -jar target/apptbook-1.0.0.jar [options] <args>\n" +
-        "options: -print, -README\n" +
-        "args: owner, description, begin-date, begin-time, end-date, end-time"
-      );
+    if (ops.size() < 6) {
+      if (ops.size() == 5) error("missing end time"); else error("missing arguments");
       return;
     }
-    String[] tok = new String[args.length - idx];
-    System.arraycopy(args, idx, tok, 0, tok.length);
-    if (tok.length < 6) error("Error: missing arguments");
-    if (tok.length > 6) error("Error: too many arguments");
-    String owner = tok[0];
-    String desc  = tok[1];
-    String bDate = tok[2];
-    String bTime = tok[3];
-    String eDate = tok[4];
-    String eTime = tok[5];
-    if (desc.trim().isEmpty()) error("Error: description cannot be empty");
-    parseOrError(bDate + " " + bTime, "begin");
-    parseOrError(eDate + " " + eTime, "end");
+    if (ops.size() > 6) {
+      error("extraneous argument: '" + ops.get(6) + "'");
+      return;
+    }
+    String owner = ops.get(0);
+    String desc  = ops.get(1);
+    String begin = ops.get(2) + " " + ops.get(3);
+    String end   = ops.get(4) + " " + ops.get(5);
+    if (!parseOrError(begin, "begin time")) return;
+    if (!parseOrError(end,   "end time"))   return;
     AppointmentBook book = new AppointmentBook(owner);
-    Appointment appt = new Appointment(desc, bDate + " " + bTime, eDate + " " + eTime);
+    Appointment appt    = new Appointment(desc, begin, end);
     book.addAppointment(appt);
-    if (printFlag) System.out.println(appt);
+    if (print) System.out.println(appt);
   }
 
-  private static void parseOrError(String dt, String which) {
+  private static boolean parseOrError(String dt, String which) {
     try {
       LocalDateTime.parse(dt, FMT);
-    } catch (DateTimeParseException e) {
-      error("Error: invalid " + which + " time '" + dt + "'. Expected mm/dd/yyyy hh:mm");
+      return true;
+    } catch (DateTimeParseException ex) {
+      error("invalid " + which + " '" + dt + "'. Expected mm/dd/yyyy hh:mm");
+      return false;
     }
   }
 
   private static void error(String msg) {
-    System.err.println(msg);
-    System.exit(1);
+    System.err.println("Error: " + msg);
   }
 }
 
