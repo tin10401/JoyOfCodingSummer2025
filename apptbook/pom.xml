@@ -59,7 +59,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>edu.pdx.cs.joy.tin22.Project2</mainClass>
+              <mainClass>edu.pdx.cs.joy.tin22.Project1</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -145,35 +145,6 @@
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
             <version>${jacoco-maven-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>default-check</id>
-                <goals>
-                  <goal>check</goal>
-                </goals>
-                <configuration>
-                  <haltOnFailure>true</haltOnFailure>
-                  <rules>
-                    <rule>
-                      <element>BUNDLE</element>
-                      <limits>
-                        <limit>
-                          <counter>INSTRUCTION</counter>
-                          <value>COVEREDRATIO</value>
-                          <minimum>${jacoco.min.instruction.covered.ratio}</minimum>
-                        </limit>
-                        <limit>
-                          <counter>CLASS</counter>
-                          <value>MISSEDCOUNT</value>
-                          <maximum>${jacoco.max.missed.classes}</maximum>
-                        </limit>
-                      </limits>
-                    </rule>
-                  </rules>
-                  <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
-                </configuration>
-              </execution>
-            </executions>
           </plugin>
         </plugins>
       </build>

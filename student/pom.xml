@@ -42,7 +42,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>edu.pdx.cs.joy.tin22.Student</mainClass>
+              <mainClass>edu.pdx.cs.joy.tin22.Project2</mainClass>
             </manifest>
           </archive>
         </configuration>
