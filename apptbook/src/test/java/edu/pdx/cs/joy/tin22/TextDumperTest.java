@@ -1,41 +1,19 @@
 package edu.pdx.cs.joy.tin22;
 
-import edu.pdx.cs.joy.ParserException;
+import java.io.StringWriter;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.*;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
-
-public class TextDumperTest {
-
+class TextDumperTest {
   @Test
-  void appointmentBookOwnerIsDumpedInTextFormat() {
-    String owner = "Test Appointment Book";
-    AppointmentBook book = new AppointmentBook(owner);
-
+  void roundTripDumpAndParse() throws Exception {
+    AppointmentBook book = new AppointmentBook("Tin");
+    book.addAppointment(new Appointment("chat", "07/30/2025 09:00", "07/30/2025 10:00"));
     StringWriter sw = new StringWriter();
-    TextDumper dumper = new TextDumper(sw);
-    dumper.dump(book);
-
-    String text = sw.toString();
-    assertThat(text, containsString(owner));
-  }
-
-  @Test
-  void canParseTextWrittenByTextDumper(@TempDir File tempDir) throws IOException, ParserException {
-    String owner = "Test Appointment Book";
-    AppointmentBook book = new AppointmentBook(owner);
-
-    File textFile = new File(tempDir, "apptbook.txt");
-    TextDumper dumper = new TextDumper(new FileWriter(textFile));
-    dumper.dump(book);
-
-    TextParser parser = new TextParser(new FileReader(textFile));
-    AppointmentBook read = parser.parse();
-    assertThat(read.getOwnerName(), equalTo(owner));
+    new TextDumper(sw).dump(book);
+    AppointmentBook parsed = new TextParser(new java.io.StringReader(sw.toString())).parse();
+    assertEquals(book.getOwnerName(), parsed.getOwnerName());
+    assertEquals(1, parsed.getAppointments().size());
   }
 }
+

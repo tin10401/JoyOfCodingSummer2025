@@ -1,34 +1,23 @@
 package edu.pdx.cs.joy.tin22;
 
 import edu.pdx.cs.joy.ParserException;
+import java.io.StringReader;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-public class TextParserTest {
-
+class TextParserTest {
   @Test
-  void validTextFileCanBeParsed() throws ParserException {
-    InputStream resource = getClass().getResourceAsStream("valid-apptbook.txt");
-    assertThat(resource, notNullValue());
-
-    TextParser parser = new TextParser(new InputStreamReader(resource));
-    AppointmentBook book = parser.parse();
-    assertThat(book.getOwnerName(), equalTo("Test Appointment Book"));
+  void parsesValidContent() throws ParserException {
+    String data = "Tin\nmeet|07/30/2025 09:00|07/30/2025 10:00\n";
+    AppointmentBook book = new TextParser(new StringReader(data)).parse();
+    assertEquals("Tin", book.getOwnerName());
+    assertEquals(1, book.getAppointments().size());
   }
 
   @Test
-  void invalidTextFileThrowsParserException() {
-    InputStream resource = getClass().getResourceAsStream("empty-apptbook.txt");
-    assertThat(resource, notNullValue());
-
-    TextParser parser = new TextParser(new InputStreamReader(resource));
-    assertThrows(ParserException.class, parser::parse);
+  void throwsOnMissingOwner() {
+    assertThrows(ParserException.class,
+      () -> new TextParser(new StringReader("")).parse());
   }
 }
+
