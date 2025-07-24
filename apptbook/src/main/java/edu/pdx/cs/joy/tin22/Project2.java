@@ -1,91 +1,110 @@
 package edu.pdx.cs.joy.tin22;
 
-import edu.pdx.cs.joy.ParserException;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.file.Files;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class Project2 {
-  private static final String FMT = "MM/dd/yyyy HH:mm";
+  private static final DateTimeFormatter FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm");
 
   public static void main(String[] args) {
-    List<String> a = new ArrayList<>(Arrays.asList(args));
-    if (a.contains("-README")) {
-      System.out.println("Project 2 Appointment Book – Tin Le\nStores appointments in a text file.");
-      return;
+    boolean print = false;
+    String textFile = null;
+    List<String> positional = new ArrayList<>();
+    for (int i = 0; i < args.length; i++) {
+      String a = args[i];
+      if (a.equals("-README")) {
+        printReadme();
+        return;
+      } else if (a.equals("-print")) {
+        print = true;
+      } else if (a.equals("-textFile")) {
+        if (i + 1 >= args.length) {
+          err("Missing filename for -textFile");
+        }
+        textFile = args[++i];
+      } else if (a.startsWith("-")) {
+        err("Unknown option: " + a);
+      } else {
+        positional.add(a);
+      }
     }
-
-    boolean print = a.remove("-print");
-    int tf = a.indexOf("-textFile");
-    File file = null;
-    if (tf != -1) {
-      if (tf + 1 >= a.size()) err("missing file path after -textFile");
-      file = new File(a.get(tf + 1));
-      a.subList(tf, tf + 2).clear();
+    if (positional.size() != 6) {
+      err("Missing or extraneous arguments");
     }
-
-    if (a.size() != 4) usage("missing or extraneous arguments");
-
-    String owner = a.get(0);
-    String desc  = a.get(1);
-    String begin = a.get(2);
-    String end   = a.get(3);
-
-    parseOrError(begin, "begin");
-    parseOrError(end, "end");
-
-    Appointment appt = new Appointment(desc, begin, end);
+    String owner = positional.get(0);
+    String desc = positional.get(1);
+    String beginDT = positional.get(2) + " " + positional.get(3);
+    String endDT = positional.get(4) + " " + positional.get(5);
+    parseOrError(beginDT, "begin");
+    parseOrError(endDT, "end");
     AppointmentBook book;
-
-    if (file != null && file.exists()) {
-      try (Reader r = new FileReader(file)) {
+    if (textFile != null && Files.exists(Path.of(textFile))) {
+      try (Reader r = Files.newBufferedReader(Path.of(textFile))) {
         book = new TextParser(r).parse();
-      } catch (IOException | ParserException e) {
-        err("cannot read " + file);
+        if (!book.getOwnerName().equals(owner)) {
+          err("Owner in file (" + book.getOwnerName() + ") does not match owner on command line (" + owner + ")");
+        }
+      } catch (Exception ex) {
+        err("Cannot parse text file: " + ex.getMessage());
         return;
       }
-      if (!book.getOwnerName().equals(owner))
-        err("owner mismatch: " + owner + " ≠ " + book.getOwnerName());
     } else {
       book = new AppointmentBook(owner);
     }
-
+    Appointment appt = new Appointment(desc, beginDT, endDT);
     book.addAppointment(appt);
-    if (print) System.out.println(appt);
-
-    if (file != null) {
+    if (textFile != null) {
       try {
-        if (file.getParentFile() != null)
-          Files.createDirectories(file.getParentFile().toPath());
-        try (Writer w = new FileWriter(file)) {
+        Path p = Path.of(textFile);
+        Path parent = p.getParent();
+        if (parent != null) {
+          Files.createDirectories(parent);
+        }
+        try (Writer w = Files.newBufferedWriter(p)) {
           new TextDumper(w).dump(book);
         }
-      } catch (IOException e) {
-        err("cannot write " + file);
+      } catch (IOException ex) {
+        err("Error writing to file: " + ex.getMessage());
       }
+    }
+    if (print) {
+      System.out.println(appt);
     }
   }
 
   private static void parseOrError(String dt, String which) {
     try {
-      new SimpleDateFormat(FMT).parse(dt);
-    } catch (Exception e) {
-      err("invalid " + which + " '" + dt + "'. Expected " + FMT);
+      LocalDateTime.parse(dt, FORMAT);
+    } catch (DateTimeParseException ex) {
+      err("Invalid " + which + " time: " + dt);
     }
   }
 
-  private static void usage(String why) {
-    System.err.println("Error: " + why);
-    System.err.println(
-        "usage: java -jar target/apptbook-1.0.0.jar [options] <owner> <description> <begin> <end>");
-    System.err.println("options: -textFile file  -print  -README");
+  private static void err(String msg) {
+    System.err.println("Error: " + msg);
+    usage();
     System.exit(1);
   }
 
-  private static void err(String m) {
-    System.err.println("Error: " + m);
-    System.exit(1);
+  private static void usage() {
+    System.err.println("usage: java -jar target/apptbook-1.0.0.jar [options] <owner> <description> <begDate> <begTime> <endDate> <endTime>");
+    System.err.println("options: -textFile file  -print  -README");
+  }
+
+  private static void printReadme() {
+    System.out.println("Project 2 Appointment Book – Tin Le");
+    System.out.println("Stores appointments in a text file.");
   }
 }
 
