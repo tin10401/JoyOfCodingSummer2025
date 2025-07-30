@@ -3,24 +3,28 @@ package edu.pdx.cs.joy.tin22;
 import edu.pdx.cs.joy.AppointmentBookDumper;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public class TextDumper implements AppointmentBookDumper<AppointmentBook> {
-  private final PrintWriter pw;
+  private static final DateTimeFormatter PRINT_FMT =
+      DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm", Locale.US);
+
+  private final PrintWriter out;
 
   public TextDumper(Writer w) {
-    this.pw = new PrintWriter(w);
+    this.out = new PrintWriter(w);
   }
 
   @Override
   public void dump(AppointmentBook book) {
-    pw.println(book.getOwnerName());
+    out.println(book.getOwnerName());
     book.getAppointments().forEach(a ->
-      pw.printf("%s|%s|%s%n",
-        a.getDescription(),
-        a.getBeginTimeString(),
-        a.getEndTimeString())
-    );
-    pw.flush();
+        out.printf("%s|%s|%s%n",
+                   a.getDescription(),
+                   a.getBeginTime().format(PRINT_FMT),
+                   a.getEndTime().format(PRINT_FMT)));
+    out.flush();
   }
 }
 
