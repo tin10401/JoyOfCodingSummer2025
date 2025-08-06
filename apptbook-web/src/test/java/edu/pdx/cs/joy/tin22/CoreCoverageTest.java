@@ -1,7 +1,6 @@
 package edu.pdx.cs.joy.tin22;
 
 import org.junit.jupiter.api.Test;
-
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.time.LocalDateTime;
