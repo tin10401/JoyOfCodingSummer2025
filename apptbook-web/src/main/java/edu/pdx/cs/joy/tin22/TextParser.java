@@ -1,43 +1,56 @@
 package edu.pdx.cs.joy.tin22;
 
-import edu.pdx.cs.joy.AppointmentBookParser;
-import edu.pdx.cs.joy.ParserException;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.Reader;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
-public class TextParser implements AppointmentBookParser<AppointmentBook> {
-  private static final DateTimeFormatter PARSE_FMT = DateTimeFormatter.ofPattern("M/d/yyyy H:mm", Locale.US);
-  private final BufferedReader br;
+public class TextParser {
+  private final BufferedReader in;
+  private static final DateTimeFormatter FMT =
+      DateTimeFormatter.ofPattern("M/d/yyyy h:mm a");
 
-  public TextParser(Reader r) {
-    this.br = new BufferedReader(r);
+  public TextParser(Reader reader) {
+    this.in = new BufferedReader(reader);
   }
 
-  @Override
-  public AppointmentBook parse() throws ParserException {
+  public AppointmentBook parse() {
     try {
-      String owner = br.readLine();
-      if (owner == null || owner.isBlank())
-        throw new ParserException("malformed file: missing owner");
-      AppointmentBook book = new AppointmentBook(owner.trim());
-      String line;
-      while ((line = br.readLine()) != null) {
-        if (line.isBlank()) continue;
-        String[] p = line.split("\\|", 3);
-        if (p.length != 3)
-          throw new ParserException("malformed file: " + line);
-        LocalDateTime begin = LocalDateTime.parse(p[1], PARSE_FMT);
-        LocalDateTime end   = LocalDateTime.parse(p[2], PARSE_FMT);
-        book.addAppointment(new Appointment(p[0], begin, end));
+      String owner = in.readLine();
+      if (owner == null) {
+        throw new IOException("Missing owner line");
       }
+
+      AppointmentBook book = new AppointmentBook(owner);
+
+      String line;
+      while ((line = in.readLine()) != null) {
+        line = line.trim();
+        if (line.isEmpty()) {
+          continue;
+        }
+
+        // Some inputs begin each appointment line with a leading '|'
+        if (line.startsWith("|")) {
+          line = line.substring(1);
+        }
+
+        String[] parts = line.split("\\|");
+        if (parts.length != 3) {
+          throw new IOException("Bad appointment line: " + line);
+        }
+
+        String description = parts[0].trim();
+        LocalDateTime begin = LocalDateTime.parse(parts[1].trim(), FMT);
+        LocalDateTime end   = LocalDateTime.parse(parts[2].trim(), FMT);
+
+        book.addAppointment(new Appointment(description, begin, end));
+      }
+
       return book;
-    } catch (ParserException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new ParserException(e.getMessage(), e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }

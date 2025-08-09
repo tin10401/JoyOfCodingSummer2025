@@ -1,11 +1,10 @@
 package edu.pdx.cs.joy.tin22;
 
-import edu.pdx.cs.joy.AbstractAppointmentBook;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class AppointmentBook extends AbstractAppointmentBook<Appointment> {
+public class AppointmentBook implements AbstractAppointmentBook<Appointment> {
   private final String owner;
   private final List<Appointment> appts = new ArrayList<>();
 
@@ -20,13 +19,12 @@ public class AppointmentBook extends AbstractAppointmentBook<Appointment> {
 
   @Override
   public Collection<Appointment> getAppointments() {
-    appts.sort(null);
     return appts;
   }
 
   @Override
-  public void addAppointment(Appointment appt) {
-    appts.add(appt);
+  public void addAppointment(Appointment a) {
+    appts.add(a);
   }
 }
 

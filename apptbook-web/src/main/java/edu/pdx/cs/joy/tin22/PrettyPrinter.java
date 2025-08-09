@@ -1,6 +1,5 @@
 package edu.pdx.cs.joy.tin22;
 
-import edu.pdx.cs.joy.AppointmentBookDumper;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.time.Duration;

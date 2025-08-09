@@ -1,10 +1,9 @@
 package edu.pdx.cs.joy.tin22;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.StringReader;
+import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -15,93 +14,136 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Project4 {
-  private static final DateTimeFormatter F = DateTimeFormatter.ofPattern("M/d/yyyy h:mm a");
 
-  public static void main(String[] a) {
-    try { run(a); } catch (Exception x) { System.err.println(x.getMessage()); System.exit(1); }
-  }
+  private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("M/d/yyyy h:mm a");
 
-  private static void run(String[] a) throws Exception {
-    if (a.length == 0) { usage(); return; }
-    boolean search = false, print = false;
-    String host = null; int port = 0; List<String> rest = new ArrayList<>();
-    for (int i = 0; i < a.length; i++) switch (a[i]) {
-      case "-host": host = a[++i]; break;
-      case "-port": port = Integer.parseInt(a[++i]); break;
-      case "-search": search = true; break;
-      case "-print": print = true; break;
-      case "-README": readme(); return;
-      default: rest.add(a[i]);
+  public static void main(String[] args) {
+    if (args.length == 0) {
+      printUsage();
+      return;
     }
-    if (host == null || port == 0) { System.err.println("missing host/port"); return; }
-    String base = "http://" + host + ':' + port + "/apptbook/appointments";
-    if (search) { doSearch(base, rest); return; }
-    doAdd(print, base, rest);
-  }
 
-  private static void readme() {
-    System.out.println("Tin Le – Project 4 Appointment-Book client\nAdds, searches, and pretty-prints appointments via the REST server.");
-  }
+    boolean readme  = false;
+    boolean print   = false;
+    boolean search  = false;
+    String  host    = null;
+    int     port    = -1;
+    List<String> r  = new ArrayList<>();
 
-  private static void usage() {
-    System.err.println("usage: -host host -port port [-search] [-print] owner desc begin date time end date time");
-  }
-
-  private static void doSearch(String base, List<String> r) throws Exception {
-    if (r.size() != 1 && r.size() != 5) { usage(); return; }
-    String url = base + "?owner=" + enc(r.get(0));
-    if (r.size() == 5) url += "&begin=" + enc(r.get(1)+' '+r.get(2)) + "&end=" + enc(r.get(3)+' '+r.get(4));
-    Resp resp = get(url);
-    if (resp.code == 200) System.out.println(pretty(resp.body));
-    else if (resp.code == 404) System.err.println("No appointment book found for " + r.get(0));
-    else System.err.println("HTTP " + resp.code + ": " + resp.body);
-  }
-
-  private static void doAdd(boolean print, String base, List<String> r) throws Exception {
-    if (r.size() != 6) { usage(); return; }
-    String owner = r.get(0), desc = r.get(1), begin = r.get(2)+' '+r.get(3), end = r.get(4)+' '+r.get(5);
-    LocalDateTime.parse(begin, F); LocalDateTime.parse(end, F);
-    String body = "owner="+enc(owner)+"&description="+enc(desc)+"&begin="+enc(begin)+"&end="+enc(end);
-    Resp resp = post(base, body);
-    if (resp.code == 200) {
-      if (print) {
-        AppointmentBook b = new TextParser(new StringReader(resp.body)).parse();
-        System.out.println(b.getAppointments().iterator().next().toString());
+    for (int i = 0; i < args.length; i++) {
+      switch (args[i]) {
+        case "-README" -> readme = true;
+        case "-print"  -> print  = true;
+        case "-search" -> search = true;
+        case "-host"   -> {
+          if (++i >= args.length) die("missing host");       host = args[i];
+        }
+        case "-port"   -> {
+          if (++i >= args.length) die("missing port");       try { port = Integer.parseInt(args[i]); }
+                                                             catch (NumberFormatException e) { die("port must be an integer"); }
+        }
+        default        -> r.add(args[i]);
       }
-    } else System.err.println("HTTP " + resp.code + ": " + resp.body);
+    }
+
+    if (readme) {
+      System.out.println("Tin Le – Project 4: Appointment-Book client\n" +
+                         "Adds, searches, and pretty-prints appointments via the REST server.");
+      printUsage();
+      return;
+    }
+
+    if (host == null || port < 0) die("host and port must be specified");
+    String base = "http://" + host + ':' + port + "/apptbook/appointments";
+
+    try {
+      if (search) {
+        if (r.size() != 5) die("for -search: owner beginDate beginTime endDate endTime");
+        doSearch(base, r);
+      } else {
+        if (r.size() != 6) die("owner desc beginDate beginTime endDate endTime");
+        doAdd(print, base, r);
+      }
+    } catch (Exception ex) {
+      System.err.println("** " + ex.getMessage());
+    }
   }
 
-  private static String pretty(String t) {
-    try { AppointmentBook b = new TextParser(new StringReader(t)).parse();
-      java.io.StringWriter w = new java.io.StringWriter();
-      new PrettyPrinter(w).dump(b);
-      return w.toString();
-    } catch (Exception x) { return t; }
+  private static void doSearch(String base, List<String> a) throws Exception {
+    String u = base + "?owner=" + enc(a.get(0)) +
+        "&begin=" + enc(a.get(1) + ' ' + a.get(2)) +
+        "&end="   + enc(a.get(3) + ' ' + a.get(4));
+    System.out.println(get(u).body());
+  }
+
+  private static void doAdd(boolean p, String base, List<String> a) throws Exception {
+    String body = "owner=" + enc(a.get(0)) +
+        "&description=" + enc(a.get(1)) +
+        "&begin=" + enc(a.get(2) + ' ' + a.get(3)) +
+        "&end="   + enc(a.get(4) + ' ' + a.get(5));
+    Resp r = post(base, body);
+    if (p && r.code() == 200) {
+      Appointment ap = new Appointment(a.get(1),
+          LocalDateTime.parse(a.get(2) + ' ' + a.get(3), DT),
+          LocalDateTime.parse(a.get(4) + ' ' + a.get(5), DT));
+      System.out.println(ap);
+    } else {
+      System.out.println(r.body());
+    }
   }
 
   private static Resp get(String u) throws Exception {
-    HttpURLConnection c = (HttpURLConnection)new URL(u).openConnection();
+    HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
     c.setRequestMethod("GET");
     return read(c);
   }
 
   private static Resp post(String u, String b) throws Exception {
-    HttpURLConnection c = (HttpURLConnection)new URL(u).openConnection();
-    c.setRequestMethod("POST"); c.setDoOutput(true);
-    c.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
-    try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(c.getOutputStream(), StandardCharsets.UTF_8))) { w.write(b); }
+    byte[] data = b.getBytes(StandardCharsets.UTF_8);
+    HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+    c.setRequestMethod("POST");
+    c.setDoOutput(true);
+    c.setFixedLengthStreamingMode(data.length);
+    c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+    try (OutputStreamWriter w = new OutputStreamWriter(c.getOutputStream(), StandardCharsets.UTF_8)) {
+      w.write(b);
+    }
     return read(c);
   }
 
   private static Resp read(HttpURLConnection c) throws Exception {
     int code = c.getResponseCode();
-    BufferedReader r = new BufferedReader(new InputStreamReader(code < 400 ? c.getInputStream() : c.getErrorStream(), StandardCharsets.UTF_8));
-    StringBuilder sb = new StringBuilder(); String line; while ((line = r.readLine()) != null) sb.append(line).append('\n'); r.close();
-    return new Resp(code, sb.toString().trim());
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(
+        code >= 400 ? c.getErrorStream() : c.getInputStream(), StandardCharsets.UTF_8))) {
+      StringBuilder sb = new StringBuilder();
+      br.lines().forEach(l -> sb.append(l).append('\n'));
+      return new Resp(code, sb.toString().trim());
+    }
   }
 
-  private static String enc(String s) throws Exception { return URLEncoder.encode(s, StandardCharsets.UTF_8.name()); }
+  private static String enc(String s) {
+    return URLEncoder.encode(s, StandardCharsets.UTF_8);
+  }
 
-  private record Resp(int code, String body) {}
+  private static void die(String m) {
+      System.err.println(m);
+      printUsage();
+      throw new RuntimeException(m);
+  }
+
+  private static void printUsage() {
+    System.out.println("""
+        usage: Project4 [-host <hostname> -port <port>] [-search] [-print] \\
+               <owner> <description> <begin date> <begin time> <end date> <end time>
+
+          -README   Prints a project description
+          -print    Prints the appointment that was just added
+          -search   Searches appointments in the given date/time range
+          -host     Hostname where the REST server is running
+          -port     Port on which the REST server is listening
+        """);
+  }
+
+  record Resp(int code, String body) { }
 }
 
